@@ -29,7 +29,7 @@ const getToken = async () => {
     return res.data.access_token
   } catch (err) {
     console.log(err)
-    return err
+    throw err
   }
 }
 

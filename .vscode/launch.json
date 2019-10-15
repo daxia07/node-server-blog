@@ -4,6 +4,15 @@
   // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
+    
+  {
+    "type": "node",
+    "request": "launch",
+    "name": "Launch Program",
+    "program": "${file}",
+    "envFile": "${workspaceFolder}/.env",    
+    "env": {"NODE_ENV":"DEBUG"},
+  },
     {
       "type": "node",
       "request": "launch",
@@ -15,13 +24,6 @@
         "debug"
       ],
       "port": 9229
-    },
-  
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Launch Program auth",
-      "program": "${workspaceFolder}/src/auth.js"
     },
     {
       "type": "node",

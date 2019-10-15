@@ -3,11 +3,14 @@ const bodyParser = require("body-parser")
 const jwt = require("express-jwt")
 const jwksRsa = require("jwks-rsa")
 const auth = require('./auth')
+const cors = require('cors')
 require('dotenv').config()
 
 const PORT = process.env.PORT || 8080
 
 const app = express()
+
+app.use(cors())
 
 const jsonParser = bodyParser.json()
 
@@ -31,50 +34,50 @@ const checkJwt = jwt({
 })
 
 app.get("/", (req, res) => {
-  res.send("hi");
+  res.send("hi")
 })
 
 app.get("/external", checkJwt, (req, res) => {
-  console.log(req)
+  console.log(req.user)
   res.send({
     msg: "Your Access Token was successfully validated"
   })
 })
 
 
-// TODO: need authentication
 app.post("/user", checkJwt, jsonParser, async (req, res) => {
+  const { userName: userName, ...rest } = req.body
   console.log(req.body)
-  const { name, location } = req.body
-  console.log(req)
   try {
     const token = await auth.getToken()
-    const users = await auth.getUserByName(token, name)
+    const users = await auth.getUserByName(token, userName)
+    if (typeof users !== 'undefined' && Array.isArray(users) && users.length) {
+      res.send({
+        status: 404,
+        name: userName,
+        msg: "username already taken, try a new one"
+      })
+    } else {
+      // deal with user info, try create new profile with unique id
+      
+      // 1. create unique user name
+      // 2. create user profile in contentful
+      // 3. update app_metadata
+      res.send({
+        status: 200,
+        name: userName,
+        msg: `username ${userName} setup!`
+      })
+    }
   } catch (err) {
-    console.log(err)
     res.send({
       status: 500,
-      name,
+      name: userName,
       msg: "Internal error, try again later"
     })
   }
-  if (typeof users !== 'undefined' && Array.isArray(users) && users.length) {
-    res.send({
-      status: 404,
-      name,
-      msg: "username already taken, try a new one"
-    })
-  } else {
-    res.send({
-      status: 200,
-      name,
-      msg: `username ${name} setup!`
-    })
-  }
-  // deal with user info
-  // 1. create unique user name
-  // 2. create user profile in contentful
-  // 3. update app_metadata
+
+
 })
 
 
