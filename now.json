@@ -11,6 +11,16 @@
       "src": "/user",
       "dest": "/src/index.js",
       "methods": ["POST"]
+    },
+    {
+      "src": "/",
+      "dest": "/src/index.js",
+      "methods": ["GET"]
+    },
+    {
+      "src": "/external",
+      "dest": "/src/index.js",
+      "methods": ["GET"]
     }
   ]
 }
