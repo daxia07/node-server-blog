@@ -13,8 +13,10 @@ const jsonParser = bodyParser.json()
 
 const authConfig = {
   domain: "alienz.au.auth0.com",
-  audience: "https://www.prawn-dumpling.com/api"
+  // audience: "https://www.prawn-dumpling.com/api"
+  audience: "https://alienz.au.auth0.com/api/v2/"
 }
+
 
 const checkJwt = jwt({
   secret: jwksRsa.expressJwtSecret({
@@ -23,7 +25,6 @@ const checkJwt = jwt({
     jwksRequestsPerMinute: 5,
     jwksUri: `https://${authConfig.domain}/.well-known/jwks.json`
   }),
-
   audience: authConfig.audience,
   issuer: `https://${authConfig.domain}/`,
   algorithm: ["RS256"]
@@ -34,31 +35,47 @@ app.get("/", (req, res) => {
 })
 
 app.get("/external", checkJwt, (req, res) => {
+  console.log(req)
   res.send({
     msg: "Your Access Token was successfully validated"
   })
 })
 
 
-app.get("/users", (req, res) => {
-  res.json([
-    { name: "William", location: "Abu Dhabi" },
-    { name: "Chris", location: "Vegas" }
-  ])
-})
-
 // TODO: need authentication
-app.post("/user", jsonParser, async (req, res) => {
+app.post("/user", checkJwt, jsonParser, async (req, res) => {
   console.log(req.body)
   const { name, location } = req.body
   console.log(req)
-  const token = await auth.getToken()
+  try {
+    const token = await auth.getToken()
+    const users = await auth.getUserByName(token, name)
+  } catch (err) {
+    console.log(err)
+    res.send({
+      status: 500,
+      name,
+      msg: "Internal error, try again later"
+    })
+  }
+  if (typeof users !== 'undefined' && Array.isArray(users) && users.length) {
+    res.send({
+      status: 404,
+      name,
+      msg: "username already taken, try a new one"
+    })
+  } else {
+    res.send({
+      status: 200,
+      name,
+      msg: `username ${name} setup!`
+    })
+  }
   // deal with user info
   // 1. create unique user name
   // 2. create user profile in contentful
   // 3. update app_metadata
-  res.send({ status: "User created", name, location });
-});
+})
 
 
 

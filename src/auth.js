@@ -1,11 +1,18 @@
-const axios = require("axios").default;
+const axios = require("axios").default
 
 const token_inst = axios.create({
   baseURL: 'https://alienz.au.auth0.com/oauth/token',
   headers: {
     'content-type': 'application/json'
   }
-});
+})
+
+const api_inst = axios.create({
+  baseURL: 'https://alienz.au.auth0.com/api/v2',
+  headers: {
+    'content-type': 'application/json'
+  }
+})
 
 const getToken = async () => {
   try {
@@ -18,7 +25,7 @@ const getToken = async () => {
         "audience": "https://alienz.au.auth0.com/api/v2/",
         "grant_type": "client_credentials"
       }
-    });
+    })
     return res.data.access_token
   } catch (err) {
     console.log(err)
@@ -26,6 +33,30 @@ const getToken = async () => {
   }
 }
 
+const getUserByName = async (token, name) => {
+  const config = {
+    method: 'get',
+    url: '/users',
+    params: {
+      q: `app_metadata.username=${name}`,
+      search_engine: 'v3'
+    },
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  }
+  try {
+    const res = await api_inst(config)
+    console.log(res)
+    return res.data
+  } catch (err) {
+    console.log(err)
+    return err
+  }
+}
+
 module.exports.getToken = getToken
+
+module.exports.getUserByName = getUserByName
 
 
