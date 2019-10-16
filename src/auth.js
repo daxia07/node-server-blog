@@ -52,17 +52,37 @@ const getUserByName = async (token, name) => {
     return res.data
   } catch (err) {
     console.log(err)
-    return err
+    throw err
   }
 }
 
-const setAppMetaData = (id, data) => {
-  console.log(data)
+const setAppMetaData = async (token, id, data) => {
+  const config = {
+    method: 'patch',
+    url: `/users/${id}`,
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    data
+  }
+  try {
+    const res = await api_inst(config)
+    // console.log(res)
+    console.log(`userInfo modified`)
+    return res.data
+  } catch (err) {
+    console.log(err)
+    throw err
+  }
 }
 
 module.exports = {
   getToken,
-  getUserByName
+  getUserByName,
+  setAppMetaData
 }
 
 
+if (process.env.NODE_ENV === 'DEBUG') {
+
+}

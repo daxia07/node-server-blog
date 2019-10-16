@@ -60,13 +60,18 @@ app.post("/user", checkJwt, jsonParser, async (req, res) => {
       })
     } else {
       // deal with user info, try create new profile with unique id
+      // 1. create unique user name
+      // 2. create user profile in contentful
       await ctf.createOrUpdateProfile({
         name,
         ...rest
       })
-      // 1. create unique user name
-      // 2. create user profile in contentful
       // 3. update app_metadata
+      const userId = req.user.sub
+      await auth.setAppMetaData(token, userId, {
+        "app_metadata": {
+        username: name
+      }})
       res.send({
         status: 200,
         name,
