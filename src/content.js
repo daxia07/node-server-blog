@@ -5,14 +5,14 @@ const client = contentful.createClient({
 })
 
 const myCat = ["about", "blogPost", "person"]
-const toDelete = []
 
 // Actions
-const deleteEntry = async (entry, filter)  => {
+const deleteAction = async (entity, filter = () => false)  => {
   try {
-    if (filter(entry)) {
-      const unpublishRes = await entry.unpublish()
-      const deleteRes = await entry.delete()
+    if (filter(entity)) {
+      console.log(entity)
+      const unpublishRes = await entity.unpublish()
+      const deleteRes = await entity.delete()
     }
   } catch (err) {
     console.log(err)
@@ -20,11 +20,14 @@ const deleteEntry = async (entry, filter)  => {
   }
 }
 
+
+
 const getAllTypes = async (action = () => {}) => {
   try {
     const space = await client.getSpace(process.env.CONT_SPACE_ID)
     const res = await space.getContentTypes()
-    return res.items.forEach((ele, index) => action(ele))
+    res.items.forEach((ele, index) => action(ele))
+    return res.items
   } catch (err) {
     console.log(err)
     throw err
@@ -36,6 +39,7 @@ const getAllEntries = async (action = ele => {}) => {
     const space = await client.getSpace(process.env.CONT_SPACE_ID)
     const response = await space.getEntries()
     response.items.forEach((ele, index) => {
+      console.log(ele)
       action(ele)
     })
     return response.items
@@ -45,19 +49,17 @@ const getAllEntries = async (action = ele => {}) => {
 }
 
 
-
 module.exports = {
   getAllTypes,
   getAllEntries,
-  deleteEntry
+  deleteEntry: deleteAction
 }
   
 if (process.env.NODE_ENV === 'DEBUG') {
-  // getAllTypes(ele => console.log(ele.sys.id))
-  //   .then(res => console.log(res))
   const action = ele => {
-    deleteEntry(ele, ele => !myCat.includes(ele.sys.contentType.sys.id))
+    deleteAction(ele, ele => !myCat.includes(ele.sys.id))
   }
-  getAllEntries(action).then(res => console.log('done'))
+  getAllTypes(action)
+    .then(res => console.log('done'))
 }
 
