@@ -4,6 +4,7 @@ const jwt = require("express-jwt")
 const jwksRsa = require("jwks-rsa")
 const auth = require('./auth')
 const cors = require('cors')
+const ctf = require('./content')
 require('dotenv').config()
 
 
@@ -39,7 +40,7 @@ app.get("/", (req, res) => {
 })
 
 app.get("/external", checkJwt, (req, res) => {
-  console.log(req.user)
+  // console.log(req.user)
   res.send({
     msg: "Your Access Token was successfully validated"
   })
@@ -48,7 +49,6 @@ app.get("/external", checkJwt, (req, res) => {
 
 app.post("/user", checkJwt, jsonParser, async (req, res) => {
   const { userName: userName, ...rest } = req.body
-  console.log(req.body)
   try {
     const token = await auth.getToken()
     const users = await auth.getUserByName(token, userName)
@@ -60,7 +60,10 @@ app.post("/user", checkJwt, jsonParser, async (req, res) => {
       })
     } else {
       // deal with user info, try create new profile with unique id
-      
+      await ctf.createOrUpdateProfile({
+        userName,
+        ...rest
+      })
       // 1. create unique user name
       // 2. create user profile in contentful
       // 3. update app_metadata
@@ -71,6 +74,7 @@ app.post("/user", checkJwt, jsonParser, async (req, res) => {
       })
     }
   } catch (err) {
+    console.log(err)
     res.send({
       status: 500,
       name: userName,

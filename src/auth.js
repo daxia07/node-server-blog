@@ -14,6 +14,7 @@ const api_inst = axios.create({
   }
 })
 
+
 const getToken = async () => {
   try {
     let res = await token_inst({
@@ -47,7 +48,7 @@ const getUserByName = async (token, name) => {
   }
   try {
     const res = await api_inst(config)
-    console.log(res)
+    // console.log(res)
     return res.data
   } catch (err) {
     console.log(err)
@@ -55,8 +56,13 @@ const getUserByName = async (token, name) => {
   }
 }
 
-module.exports.getToken = getToken
+const setAppMetaData = (id, data) => {
+  console.log(data)
+}
 
-module.exports.getUserByName = getUserByName
+module.exports = {
+  getToken,
+  getUserByName
+}
 
 
