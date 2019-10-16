@@ -6,6 +6,7 @@ const auth = require('./auth')
 const cors = require('cors')
 require('dotenv').config()
 
+
 const PORT = process.env.PORT || 8080
 
 const app = express()
@@ -34,7 +35,7 @@ const checkJwt = jwt({
 })
 
 app.get("/", (req, res) => {
-  res.send("hi")
+  res.send(`${process.env.CONT_SPACE_ID}`)
 })
 
 app.get("/external", checkJwt, (req, res) => {
