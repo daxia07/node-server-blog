@@ -4,61 +4,60 @@ const client = contentful.createClient({
   accessToken: process.env.CON_KEY
 })
 
-const myCat = ["About", "Person", "Blog Post"]
+const myCat = ["about", "blogPost", "person"]
+const toDelete = []
 
-
-const getAllTypes = async () => {
+// Actions
+const deleteEntry = async (entry, filter)  => {
   try {
-    const space = await client.getSpace(process.env.CONT_SPACE_ID)
-    const res = await space.getContentTypes()
-    return res.items.map((ele, index) => ele.sys.id)
+    if (filter(entry)) {
+      const unpublishRes = await entry.unpublish()
+      const deleteRes = await entry.delete()
+    }
   } catch (err) {
     console.log(err)
     throw err
   }
 }
 
+const getAllTypes = async (action = () => {}) => {
+  try {
+    const space = await client.getSpace(process.env.CONT_SPACE_ID)
+    const res = await space.getContentTypes()
+    return res.items.forEach((ele, index) => action(ele))
+  } catch (err) {
+    console.log(err)
+    throw err
+  }
+}
+
+const getAllEntries = async (action = ele => {}) => {
+  try {
+    const space = await client.getSpace(process.env.CONT_SPACE_ID)
+    const response = await space.getEntries()
+    response.items.forEach((ele, index) => {
+      action(ele)
+    })
+    return response.items
+  } catch (err) {
+    throw err
+  }
+}
 
 
 
-const toDelete = ["course"]
-
-let mySpace
-
-
-
-
-// client.getSpace(process.env.CONT_SPACE_ID)
-//   .then((space) => space.getContentType('course'))
-//   .then((contentType) => {
-//     console.log(contentType)
-//     contentType.unpublish()
-//       .then(contentType => contentType.delete())
-//   })
-//   .then(() => console.log('Content type deleted.'))
-//   .catch(console.error)
-
-
-module.exports.getAllTypes = getAllTypes
+module.exports = {
+  getAllTypes,
+  getAllEntries,
+  deleteEntry
+}
   
 if (process.env.NODE_ENV === 'DEBUG') {
-  getAllTypes()
-    .then(res => console.log(res))
-  
-  // client.getSpace(process.env.CONT_SPACE_ID)
-  // .then(space => space.getContentTypes()
-  // )
-  // .then(response => {
-  //   console.log(response.items)
-  //   response.items.forEach(ele => {
-  //     if (!myCat.includes(ele.name)) {
-  //       console.log(ele.sys.id)
-  //       toDelete.push(ele)
-  //     }
-  //   })
-  // })
-  //   .catch(console.error)
-  
-  
+  // getAllTypes(ele => console.log(ele.sys.id))
+  //   .then(res => console.log(res))
+  const action = ele => {
+    deleteEntry(ele, ele => !myCat.includes(ele.sys.contentType.sys.id))
+  }
+  getAllEntries(action).then(res => console.log('done'))
 }
 
