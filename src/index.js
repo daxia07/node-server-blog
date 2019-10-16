@@ -35,7 +35,7 @@ const checkJwt = jwt({
 })
 
 app.get("/", (req, res) => {
-  res.send(`${process.env.CONT_SPACE_ID}`)
+  res.send(`${process.env.cont_space_id}`)
 })
 
 app.get("/external", checkJwt, (req, res) => {
