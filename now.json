@@ -17,5 +17,11 @@
       "dest": "/src/index.js",
       "methods": ["GET"]
     }
-  ]
+  ],
+  "env": {
+    "AUTH0_CLIENT_SECRET": "@auth0_client_secret",
+    "AUTH0_NODE_SECRET": "@auth0_node_secret",
+    "CON_KEY": "@con_key",
+    "CONT_SPACE_ID": "@cont_space_id"
+  }
 }
