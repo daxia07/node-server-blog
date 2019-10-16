@@ -48,20 +48,20 @@ app.get("/external", checkJwt, (req, res) => {
 
 
 app.post("/user", checkJwt, jsonParser, async (req, res) => {
-  const { userName: userName, ...rest } = req.body
+  const { userName: name, ...rest } = req.body
   try {
     const token = await auth.getToken()
-    const users = await auth.getUserByName(token, userName)
+    const users = await auth.getUserByName(token, name)
     if (typeof users !== 'undefined' && Array.isArray(users) && users.length) {
       res.send({
         status: 404,
-        name: userName,
+        name,
         msg: "username already taken, try a new one"
       })
     } else {
       // deal with user info, try create new profile with unique id
       await ctf.createOrUpdateProfile({
-        userName,
+        name,
         ...rest
       })
       // 1. create unique user name
@@ -69,19 +69,18 @@ app.post("/user", checkJwt, jsonParser, async (req, res) => {
       // 3. update app_metadata
       res.send({
         status: 200,
-        name: userName,
-        msg: `username ${userName} setup!`
+        name,
+        msg: `username ${name} setup!`
       })
     }
   } catch (err) {
     console.log(err)
     res.send({
       status: 500,
-      name: userName,
+      name,
       msg: "Internal error, try again later"
     })
   }
-
 
 })
 

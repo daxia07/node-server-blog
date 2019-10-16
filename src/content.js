@@ -10,9 +10,22 @@ const getClient = () => contentful.createClient({
   accessToken: process.env.CON_KEY
 })
 
+const formatData = (data, loc = "en-US") => {
+  let ret = {}
+  Object.keys(data).forEach((key, index) => {
+    ret = {
+      ...ret,
+      [key]: {
+        [loc]: data[key]
+      }
+    }
+  })
+  return ret
+}
+
 
 // Actions
-const deleteEntity = async (entity, filter = () => false)  => {
+const deleteEntity = async (entity, filter = () => false) => {
   try {
     if (filter(entity)) {
       console.log(entity)
@@ -48,50 +61,33 @@ const getAllEntries = async (action = ele => {}) => {
   }
 }
 
-const createOrUpdateProfile = async (profile, loc="en-US", env_id="master") => {
-  const {fullName, userName, shortBio, socialLink} = profile
-  const firstName = fullName.substr(0, fullName.indexOf(' '))
-  const lastName = fullName.substr(fullName.indexOf(' ') + 1)
-  console.log(process.env)
-
-  let space
+const createOrUpdateProfile = async (profile, loc = "en-US", env_id = "master") => {
+  let env, data, entry
+  const { fullName, name, shortBio, socialLink } = profile
   try {
-    // create
-    const config = {
-      method: 'put',
-      url: `/${process.env.CONT_SPACE_ID}/environments/${env_id}/entries/${userName}/`,
-      headers: {
-        'Content-type': 'application/vnd.contentful.management.v1+json',
-        'X-Contentful-Content-Type': 'person',
-        'Authorization': 'Bearer ' + process.env.CON_KEY
-      },
-      data: {
-        fields: {
-          name: { [loc]: userName },
-          firstName: {[loc]: firstName},
-          lastName: {[loc]: lastName},
-          shortBio: {[loc]: shortBio},
-          socialLink: {[loc]: socialLink}
-        }
+    const firstName = fullName.substr(0, fullName.indexOf(' '))
+    const lastName = fullName.substr(fullName.indexOf(' ') + 1)
+    data = formatData({ name,firstName,lastName, shortBio,socialLink})
+    const space = await getClient().getSpace(process.env.CONT_SPACE_ID)
+    env = await space.getEnvironment(env_id)
+    entry = await env.createEntryWithId('person', name, { fields: data })
+    console.log(`Type Person entry: ${entry.sys.id} created`)
+    entry.publish().then(entry => console.log(`Entry ${entry.sys.id} published.`))
+
+  } catch (err) {
+    if (err.name === 'VersionMismatch' && env && true) {
+      const entry = await env.getEntry(name)
+      let fields = entry.fields
+      fields = {
+        ...fields,
+        ...data
       }
+      entry.fields = fields
+      entry.update().then(entry => {
+        console.log(`Type Person entry: ${entry.sys.id} updated`)
+        entry.publish().then(entry => console.log(`Entry ${entry.sys.id} published.`))
+      })
     }
-    const res = await ctfAPI(config)
-    console.log(res.data)
-
-  } catch (err) {
-    console.log(err)
-    try {
-      // space = space && getClient().getSpace()
-    } catch (err) {
-      console.log(err)
-      throw err
-    }
-  }
-  try {
-    // publish
-  } catch (err) {
-    console.log(err)
-    throw err
   }
 }
 
@@ -103,7 +99,7 @@ module.exports = {
   deleteEntity,
   createOrUpdateProfile
 }
-  
+
 if (process.env.NODE_ENV === 'DEBUG') {
   // const myCat = ["about", "blogPost", "person"]
   // const action = ele => {
@@ -119,4 +115,3 @@ if (process.env.NODE_ENV === 'DEBUG') {
   }
   createOrUpdateProfile(mockProfile)
 }
-
