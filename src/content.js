@@ -65,7 +65,7 @@ const createOrUpdateProfile = async (profile, loc = "en-US", env_id = "master") 
     data = formatData({ name,firstName,lastName, shortBio,socialLink})
     const space = await getClient().getSpace(process.env.CONT_SPACE_ID)
     env = await space.getEnvironment(env_id)
-    entry = await env.createEntryWithId('person', name, { fields: data })
+    entry = await env.createEntry('person', { fields: data })
     console.log(`Type Person entry: ${entry.sys.id} created`)
     entry.publish().then(entry => console.log(`Entry ${entry.sys.id} published.`))
 
@@ -86,61 +86,40 @@ const createOrUpdateProfile = async (profile, loc = "en-US", env_id = "master") 
   }
 }
 
-const createOrUpdateArticle = async (profile, loc = "en-US", env_id = "master") => {
-  let env, data, entry
-  const { fullName, name, shortBio, socialLink } = profile
-  try {
-    const firstName = fullName.substr(0, fullName.indexOf(' '))
-    const lastName = fullName.substr(fullName.indexOf(' ') + 1)
-    data = formatData({ name,firstName,lastName, shortBio,socialLink}, loc)
-    const space = await getClient().getSpace(process.env.CONT_SPACE_ID)
-    env = await space.getEnvironment(env_id)
-    entry = await env.createEntryWithId('person', name, { fields: data })
-    console.log(`Type Person entry: ${entry.sys.id} created`)
-    entry.publish().then(entry => console.log(`Entry ${entry.sys.id} published.`))
-
-  } catch (err) {
-    if (err.name === 'VersionMismatch' && env && true) {
-      const entry = await env.getEntry(name)
-      let fields = entry.fields
-      fields = {
-        ...fields,
-        ...data
-      }
-      entry.fields = fields
-      entry.update().then(entry => {
-        console.log(`Type Person entry: ${entry.sys.id} updated`)
-        entry.publish().then(entry => console.log(`Entry ${entry.sys.id} published.`))
-      })
-    }
-  }
-}
 
 // article CRUD
-const createArticle = async (article, loc="en-US", env_id="master") => {
-  let env, data, entry
-  const { fullName, name, shortBio, socialLink } = post
-  try {
-    const firstName = fullName.substr(0, fullName.indexOf(' '))
-    const lastName = fullName.substr(fullName.indexOf(' ') + 1)
-    data = formatData({ name, firstName, lastName, shortBio, socialLink }, loc)
-    const space = await getClient().getSpace(process.env.CONT_SPACE_ID)
-    env = await space.getEnvironment(env_id)
-    entry = await env.createEntryWithId('person', name, { fields: data })
-    console.log(`Type Person entry: ${entry.sys.id} created`)
-    entry.publish().then(entry => console.log(`Entry ${entry.sys.id} published.`))
 
-  } catch (err) {
-    throw err
-  }
-}
-
-const updateArticle = async (article, loc = "en-US", env_id = "master") => {
-  const {authorName, id, userId, ...rest} = article 
+const createOrUpdateArticle = async (article, loc = "en-US", env_id = "master") => {
+  let artEnt, appendData = {}
+  const { authorName, id, userId, ...rest } = article
+  if (typeof authorName === 'undefined' || typeof userId === 'undefined') {
+    throw new Error(`please provide author info`)
+  } 
   const space = await getClient().getSpace(process.env.CONT_SPACE_ID)
   const env = await space.getEnvironment(env_id)
-  let artEnt = await env.getEntry(id)
   const user = await env.getEntry(userId)
+  if (!user) {
+    throw new Error('user not defined!')
+  }
+  if (typeof id !== 'undefined') {
+    artEnt = await env.getEntry(id)
+  } else {
+    artEnt = await env.createEntry('blogPost', {})
+    appendData = {
+      author: {
+        [loc]: {
+          sys: {
+            id: user.sys.id,
+            linkType: "Entry",
+            type: "Link"
+          }
+        }
+      },
+      publishDate: {
+        [loc]: new Date().toISOString()
+      }
+    }
+  }
   const name = user.fields.name[loc] 
   if (name !== authorName) {
     throw new Error(`unauthorized author for blog ${id}`)
@@ -179,6 +158,7 @@ const updateArticle = async (article, loc = "en-US", env_id = "master") => {
   data = {
     ...artEnt.fields,
     ...data,
+    ...appendData
   }
   artEnt.fields = data
   artEnt = await artEnt.update()
@@ -213,7 +193,7 @@ if (process.env.NODE_ENV === 'DEBUG') {
   // createOrUpdateProfile(mockProfile)
   const mockArticle = {
     authorName: "uuuuuuu1uuu", // should equal to fields.author[loc].sys.id
-    id: "6CTZL6hWc6GfMXCOeU9NK9", // only when update, generated automatically on create
+    // id: "6CTZL6hWc6GfMXCOeU9NK9", // only when update, generated automatically on create
     userId: "48oSuihma1l4U2ydjknXmT", // test field, to modify user id
     body: "##TEST ", //md plain text
     category: "development", //only allowed text
@@ -224,9 +204,9 @@ if (process.env.NODE_ENV === 'DEBUG') {
     tags: ['a', 'b'],
     title: 'test blog',
   }
-  updateArticle(mockArticle)
-    .then(err => {
-      console.log(err)
+  createOrUpdateArticle(mockArticle)
+    .then(console.log)
+    .catch(err => {
+      console.error(err)
     })
-    .catch(console.error)
 }
