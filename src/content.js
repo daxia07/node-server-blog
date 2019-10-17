@@ -1,10 +1,5 @@
 const contentful = require('contentful-management')
-const axios = require("axios").default
 
-
-const ctfAPI = axios.create({
-  baseURL: 'https://api.contentful.com/spaces',
-})
 
 const getClient = () => contentful.createClient({
   accessToken: process.env.CON_KEY
@@ -91,6 +86,108 @@ const createOrUpdateProfile = async (profile, loc = "en-US", env_id = "master") 
   }
 }
 
+const createOrUpdateArticle = async (profile, loc = "en-US", env_id = "master") => {
+  let env, data, entry
+  const { fullName, name, shortBio, socialLink } = profile
+  try {
+    const firstName = fullName.substr(0, fullName.indexOf(' '))
+    const lastName = fullName.substr(fullName.indexOf(' ') + 1)
+    data = formatData({ name,firstName,lastName, shortBio,socialLink}, loc)
+    const space = await getClient().getSpace(process.env.CONT_SPACE_ID)
+    env = await space.getEnvironment(env_id)
+    entry = await env.createEntryWithId('person', name, { fields: data })
+    console.log(`Type Person entry: ${entry.sys.id} created`)
+    entry.publish().then(entry => console.log(`Entry ${entry.sys.id} published.`))
+
+  } catch (err) {
+    if (err.name === 'VersionMismatch' && env && true) {
+      const entry = await env.getEntry(name)
+      let fields = entry.fields
+      fields = {
+        ...fields,
+        ...data
+      }
+      entry.fields = fields
+      entry.update().then(entry => {
+        console.log(`Type Person entry: ${entry.sys.id} updated`)
+        entry.publish().then(entry => console.log(`Entry ${entry.sys.id} published.`))
+      })
+    }
+  }
+}
+
+// article CRUD
+const createArticle = async (article, loc="en-US", env_id="master") => {
+  let env, data, entry
+  const { fullName, name, shortBio, socialLink } = post
+  try {
+    const firstName = fullName.substr(0, fullName.indexOf(' '))
+    const lastName = fullName.substr(fullName.indexOf(' ') + 1)
+    data = formatData({ name, firstName, lastName, shortBio, socialLink }, loc)
+    const space = await getClient().getSpace(process.env.CONT_SPACE_ID)
+    env = await space.getEnvironment(env_id)
+    entry = await env.createEntryWithId('person', name, { fields: data })
+    console.log(`Type Person entry: ${entry.sys.id} created`)
+    entry.publish().then(entry => console.log(`Entry ${entry.sys.id} published.`))
+
+  } catch (err) {
+    throw err
+  }
+}
+
+const updateArticle = async (article, loc = "en-US", env_id = "master") => {
+  const {authorName, id, userId, ...rest} = article 
+  const space = await getClient().getSpace(process.env.CONT_SPACE_ID)
+  const env = await space.getEnvironment(env_id)
+  let artEnt = await env.getEntry(id)
+  const user = await env.getEntry(userId)
+  const name = user.fields.name[loc] 
+  if (name !== authorName) {
+    throw new Error(`unauthorized author for blog ${id}`)
+  }
+  // deal with asset
+  if (Object.keys(article).includes('heroImage')) {
+    const fileEx = article.heroImage.slice(article.heroImage.lastIndexOf('.') + 1)
+    const meta = {
+      description: `heroImage for article ${artEnt.sys.id}`,
+      title: `image title for ${artEnt.sys.id}`,
+      file: {
+        contentType: `image/${fileEx}`,
+        fileName: `heroImage.${fileEx}`,
+        upload: article.heroImage
+      }
+    }
+    const newImage = await env.createAsset({
+      fields: formatData(meta)
+    })
+    let newAsset = await env.createAsset(newImage)
+    newAsset = await newAsset.processForLocale(loc)
+    await newAsset.publish()
+    artEnt.fields.heroImage = {
+      [loc]: {
+        "sys": {
+          "type": "Link",
+          "linkType": "Asset",
+          "id": newAsset.sys.id
+        }
+      }
+    }
+    delete rest.heroImage
+  }
+
+  let data = formatData(rest, loc)
+  data = {
+    ...artEnt.fields,
+    ...data,
+  }
+  artEnt.fields = data
+  artEnt = await artEnt.update()
+  if (!artEnt.fields.draft[loc]) {
+    artEnt = await artEnt.publish()
+  }
+  return artEnt
+  
+}
 
 
 module.exports = {
@@ -107,11 +204,29 @@ if (process.env.NODE_ENV === 'DEBUG') {
   // }
   // getAllTypes(action)
   //   .then(res => console.log('done'))
-  const mockProfile = {
-    "fullName": "Mingxia Li",
-    "shortBio": "aaaaaaaaaaaaaaaaaaaaaa",
-    "socialLink": "",
-    "userName": "u"
+  // const mockProfile = {
+  //   "fullName": "Mingxia Li",
+  //   "shortBio": "aaaaaaaaaaaaaaaaaaaaaa",
+  //   "socialLink": "",
+  //   "userName": "uuuuuu"
+  // }
+  // createOrUpdateProfile(mockProfile)
+  const mockArticle = {
+    authorName: "uuuuuuu1uuu", // should equal to fields.author[loc].sys.id
+    id: "6CTZL6hWc6GfMXCOeU9NK9", // only when update, generated automatically on create
+    userId: "48oSuihma1l4U2ydjknXmT", // test field, to modify user id
+    body: "##TEST ", //md plain text
+    category: "development", //only allowed text
+    description: "this is a test blog", // plain text
+    draft: false, // if false publish
+    // publish date and update date
+    heroImage: 'https://images2.minutemediacdn.com/image/upload/c_crop,h_1193,w_2121,x_0,y_64/f_auto,q_auto,w_1100/v1565279671/shape/mentalfloss/578211-gettyimages-542930526.jpg', //should choose between upload or link
+    tags: ['a', 'b'],
+    title: 'test blog',
   }
-  createOrUpdateProfile(mockProfile)
+  updateArticle(mockArticle)
+    .then(err => {
+      console.log(err)
+    })
+    .catch(console.error)
 }

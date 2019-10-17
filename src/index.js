@@ -86,9 +86,48 @@ app.post("/user", checkJwt, jsonParser, async (req, res) => {
       msg: "Internal error, try again later"
     })
   }
-
 })
 
+app.post("/article", checkJwt, jsonParser, async (req, res) => {
+  const { userName: name, ...rest } = req.body
+  try {
+    const token = await auth.getToken()
+    const users = await auth.getUserByName(token, name)
+    if (typeof users !== 'undefined' && Array.isArray(users) && users.length) {
+      res.send({
+        status: 404,
+        name,
+        msg: "username already taken, try a new one"
+      })
+    } else {
+      // deal with user info, try create new profile with unique id
+      // 1. create unique user name
+      // 2. create user profile in contentful
+      await ctf.createOrUpdateProfile({
+        name,
+        ...rest
+      })
+      // 3. update app_metadata
+      const userId = req.user.sub
+      await auth.setAppMetaData(token, userId, {
+        "app_metadata": {
+        username: name
+      }})
+      res.send({
+        status: 200,
+        name,
+        msg: `username ${name} setup!`
+      })
+    }
+  } catch (err) {
+    console.log(err)
+    res.send({
+      status: 500,
+      name,
+      msg: "Internal error, try again later"
+    })
+  }
+})
 
 
 app.listen(PORT, () => console.log(`API on PORT: ${PORT}`));
